@@ -9,12 +9,10 @@ import (
 
 func main() {
 	program := []Instruction{
-		push("a", 2),
-		push("b", 3),
-		plus("c"),
-		push("r", -1),
-		multiply("t"),
-		dump("t"),
+		push(3),
+		push(6),
+		div(),
+		dump(),
 	}
 
 	// buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
@@ -56,46 +54,40 @@ type Instruction struct {
 	Name        string
 }
 
-func push(name string, x int) Instruction {
+func push(x int) Instruction {
 	return Instruction{
 		Type:        Push,
 		NumberValue: x,
-		Name:        name,
 	}
 }
 
-func plus(name string) Instruction {
+func plus() Instruction {
 	return Instruction{
 		Type: Plus,
-		Name: name,
 	}
 }
 
-func minus(name string) Instruction {
+func sub() Instruction {
 	return Instruction{
 		Type: Minus,
-		Name: name,
 	}
 }
 
-func multiply(name string) Instruction {
+func mul() Instruction {
 	return Instruction{
 		Type: Multiply,
-		Name: name,
 	}
 }
 
-func divide(name string) Instruction {
+func div() Instruction {
 	return Instruction{
 		Type: Divide,
-		Name: name,
 	}
 }
 
-func dump(name string) Instruction {
+func dump() Instruction {
 	return Instruction{
 		Type: Dump,
-		Name: name,
 	}
 }
 
@@ -142,8 +134,6 @@ func runProgram(program []Instruction) {
 		case Dump:
 			a := stack[len(stack)-1]
 
-			stack = stack[:len(stack)-1]
-
 			fmt.Printf("%d: Dump = %d\n", i, a)
 
 		default:
@@ -153,7 +143,7 @@ func runProgram(program []Instruction) {
 }
 
 func buildProgram(program []Instruction) {
-	stack := make([]Instruction, 0)
+	stack := make([]string, 0)
 
 	asmBuf := strings.Builder{}
 
@@ -163,9 +153,10 @@ func buildProgram(program []Instruction) {
 	for i, inst := range program {
 		switch inst.Type {
 		case Push:
-			stack = append(stack, inst)
+			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
+			stack = append(stack, stackValue)
 
-			asmBuf.WriteString(fmt.Sprintf("	%s =w copy %d\n", "%"+inst.Name, inst.NumberValue))
+			asmBuf.WriteString(fmt.Sprintf("	%s =w copy %d\n", stackValue, inst.NumberValue))
 
 		case Plus:
 			a := stack[len(stack)-1]
@@ -173,69 +164,48 @@ func buildProgram(program []Instruction) {
 
 			stack = stack[:len(stack)-2]
 
-			stack = append(stack, inst)
+			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
+			stack = append(stack, stackValue)
 
-			asmBuf.WriteString(fmt.Sprintf("	%s =w add %s, %s\n", "%"+inst.Name, "%"+a.Name, "%"+b.Name))
+			asmBuf.WriteString(fmt.Sprintf("	%s =w add %s, %s\n", stackValue, b, a))
 
 		case Minus:
-			// a := stack[len(stack)-1]
-			// b := stack[len(stack)-2]
-
-			// stack = stack[:len(stack)-2]
-
-			// stack = append(stack, b-a)
-
 			a := stack[len(stack)-1]
 			b := stack[len(stack)-2]
 
 			stack = stack[:len(stack)-2]
 
-			stack = append(stack, inst)
+			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
+			stack = append(stack, stackValue)
 
-			asmBuf.WriteString(fmt.Sprintf("	%s =w sub %s, %s\n", "%"+inst.Name, "%"+a.Name, "%"+b.Name))
+			asmBuf.WriteString(fmt.Sprintf("	%s =w sub %s, %s\n", stackValue, b, a))
 
 		case Multiply:
-			// a := stack[len(stack)-1]
-			// b := stack[len(stack)-2]
-
-			// stack = stack[:len(stack)-2]
-
-			// stack = append(stack, a*b)
-
 			a := stack[len(stack)-1]
 			b := stack[len(stack)-2]
 
 			stack = stack[:len(stack)-2]
 
-			stack = append(stack, inst)
+			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
+			stack = append(stack, stackValue)
 
-			asmBuf.WriteString(fmt.Sprintf("	%s =w mul %s, %s\n", "%"+inst.Name, "%"+a.Name, "%"+b.Name))
+			asmBuf.WriteString(fmt.Sprintf("	%s =w mul %s, %s\n", stackValue, b, a))
 
 		case Divide:
-			// 	a := stack[len(stack)-1]
-			// 	b := stack[len(stack)-2]
-
-			// 	stack = stack[:len(stack)-2]
-
-			// 	stack = append(stack, b/a)
-
 			a := stack[len(stack)-1]
 			b := stack[len(stack)-2]
 
 			stack = stack[:len(stack)-2]
 
-			stack = append(stack, inst)
+			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
+			stack = append(stack, stackValue)
 
-			asmBuf.WriteString(fmt.Sprintf("	%s =w div %s, %s\n", "%"+inst.Name, "%"+a.Name, "%"+b.Name))
+			asmBuf.WriteString(fmt.Sprintf("	%s =w div %s, %s\n", stackValue, b, a))
 
 		case Dump:
-			// a := stack[len(stack)-1]
+			a := stack[len(stack)-1]
 
-			// stack = stack[:len(stack)-1]
-
-			// fmt.Printf("%d: Dump = %d\n", i, a)
-
-			asmBuf.WriteString(fmt.Sprintf("	call $printf(l $dump, ...,w %d , w %s)\n", i, "%"+inst.Name))
+			asmBuf.WriteString(fmt.Sprintf("	call $printf(l $dump, ...,w %d , w %s)\n", i, a))
 
 		default:
 			panic(fmt.Sprintf("unknow instruction: %v", inst))
@@ -253,4 +223,6 @@ func buildProgram(program []Instruction) {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println(asm)
 }
