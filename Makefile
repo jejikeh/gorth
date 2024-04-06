@@ -1,8 +1,8 @@
 run: main.go
-	@gofmt -w . && go run . run -i=tests/simple_instructions.gorth
+	@gofmt -w . && go run . run -i=tests/foo.gorth
 	
 build: main.go
-	@gofmt -w . && go run . build -i=tests/simple_instructions.gorth && qbe -o ./out/file.s file.ssa && cc ./out/file.s -o ./out/file && ./out/file
+	@gofmt -w . && go run . build -i=tests/foo.gorth -o=out/foo.ssa && qbe -o ./out/foo.s ./out/foo.ssa && cc ./out/foo.s -o ./out/foo && ./out/foo
 
 f:
 	@gofmt -w .

@@ -4,14 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 )
 
 func main() {
 	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
 	buildPath := buildCmd.String("i", "", "path to project")
-	// outputPath := buildCmd.String("o", "", "output path")
+	outputPath := buildCmd.String("o", "", "output path")
 
 	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
 	runPath := runCmd.String("i", "", "path to project")
@@ -22,14 +21,26 @@ func main() {
 	case "build":
 		buildCmd.Parse(os.Args[2:])
 
-		program := loadProgramFromFile(*buildPath)
+		lexer := NewLexer(*buildPath)
 
-		buildProgram(program)
+		program, err := lexer.loadProgramFromFile()
+
+		if err != nil {
+			panic(err)
+		}
+
+		buildProgram(*outputPath, program)
 
 	case "run":
 		runCmd.Parse(os.Args[2:])
 
-		program := loadProgramFromFile(*runPath)
+		lexer := NewLexer(*runPath)
+
+		program, err := lexer.loadProgramFromFile()
+
+		if err != nil {
+			panic(err)
+		}
 
 		runProgram(program)
 
@@ -93,58 +104,6 @@ func dump() Instruction {
 	}
 }
 
-func loadProgramFromFile(path string) []Instruction {
-	source, err := os.ReadFile(path)
-
-	if err != nil {
-		panic(err)
-	}
-
-	instructions := make([]Instruction, 0)
-
-	words := strings.Fields(string(source))
-
-	for _, w := range words {
-		if num, err := strconv.Atoi(w); err == nil {
-			instructions = append(instructions, push(num))
-
-			continue
-		}
-
-		if w == "+" {
-			instructions = append(instructions, plus())
-
-			continue
-		}
-
-		if w == "-" {
-			instructions = append(instructions, sub())
-
-			continue
-		}
-
-		if w == "*" {
-			instructions = append(instructions, mul())
-
-			continue
-		}
-
-		if w == "/" {
-			instructions = append(instructions, div())
-
-			continue
-		}
-
-		if w == "println" {
-			instructions = append(instructions, dump())
-
-			continue
-		}
-	}
-
-	return instructions
-}
-
 func runProgram(program []Instruction) {
 	stack := make([]int, 0)
 
@@ -196,7 +155,7 @@ func runProgram(program []Instruction) {
 	}
 }
 
-func buildProgram(program []Instruction) {
+func buildProgram(path string, program []Instruction) {
 	stack := make([]string, 0)
 
 	asmBuf := strings.Builder{}
@@ -272,7 +231,7 @@ func buildProgram(program []Instruction) {
 
 	asm := asmBuf.String()
 
-	err := os.WriteFile("file.ssa", []byte(asm), 0644)
+	err := os.WriteFile(path, []byte(asm), 0644)
 
 	if err != nil {
 		panic(err)
