@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 )
 
 func main() {
@@ -29,7 +28,7 @@ func main() {
 			panic(err)
 		}
 
-		buildProgram(*outputPath, program)
+		genQBE(*outputPath, program)
 
 	case "run":
 		runCmd.Parse(os.Args[2:])
@@ -54,11 +53,16 @@ type InstructionType int
 
 const (
 	Push InstructionType = iota
+
 	Plus
 	Minus
 	Multiply
 	Divide
+
+	Equal
+
 	Dump
+	Assert
 )
 
 type Instruction struct {
@@ -98,9 +102,21 @@ func div() Instruction {
 	}
 }
 
+func equal() Instruction {
+	return Instruction{
+		Type: Equal,
+	}
+}
+
 func dump() Instruction {
 	return Instruction{
 		Type: Dump,
+	}
+}
+
+func assert() Instruction {
+	return Instruction{
+		Type: Assert,
 	}
 }
 
@@ -144,10 +160,28 @@ func runProgram(program []Instruction) {
 
 			stack = append(stack, b/a)
 
+		case Equal:
+			a := stack[len(stack)-1]
+			b := stack[len(stack)-2]
+
+			stack = stack[:len(stack)-2]
+
+			stack = append(stack, boolToInt(a == b))
+
 		case Dump:
 			a := stack[len(stack)-1]
 
-			fmt.Printf("%d: Dump = %d\n", i, a)
+			fmt.Printf("%d: Dump = [%d]\n", i, a)
+
+		case Assert:
+			expected := stack[len(stack)-1]
+			got := stack[len(stack)-2]
+
+			stack = stack[:len(stack)-1]
+
+			if expected != got {
+				panic(fmt.Sprintf("%d: Assert = [expected '%d' but got '%d']", i, expected, got))
+			}
 
 		default:
 			panic(fmt.Sprintf("unknow instruction: %v", inst))
@@ -155,87 +189,10 @@ func runProgram(program []Instruction) {
 	}
 }
 
-func buildProgram(path string, program []Instruction) {
-	stack := make([]string, 0)
-
-	asmBuf := strings.Builder{}
-
-	asmBuf.WriteString("export function w $main() {\n")
-	asmBuf.WriteString("@start\n")
-
-	for i, inst := range program {
-		switch inst.Type {
-		case Push:
-			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
-			stack = append(stack, stackValue)
-
-			asmBuf.WriteString(fmt.Sprintf("	%s =w copy %d\n", stackValue, inst.NumberValue))
-
-		case Plus:
-			a := stack[len(stack)-1]
-			b := stack[len(stack)-2]
-
-			stack = stack[:len(stack)-2]
-
-			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
-			stack = append(stack, stackValue)
-
-			asmBuf.WriteString(fmt.Sprintf("	%s =w add %s, %s\n", stackValue, b, a))
-
-		case Minus:
-			a := stack[len(stack)-1]
-			b := stack[len(stack)-2]
-
-			stack = stack[:len(stack)-2]
-
-			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
-			stack = append(stack, stackValue)
-
-			asmBuf.WriteString(fmt.Sprintf("	%s =w sub %s, %s\n", stackValue, b, a))
-
-		case Multiply:
-			a := stack[len(stack)-1]
-			b := stack[len(stack)-2]
-
-			stack = stack[:len(stack)-2]
-
-			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
-			stack = append(stack, stackValue)
-
-			asmBuf.WriteString(fmt.Sprintf("	%s =w mul %s, %s\n", stackValue, b, a))
-
-		case Divide:
-			a := stack[len(stack)-1]
-			b := stack[len(stack)-2]
-
-			stack = stack[:len(stack)-2]
-
-			stackValue := "%" + fmt.Sprintf(".st%d", len(stack))
-			stack = append(stack, stackValue)
-
-			asmBuf.WriteString(fmt.Sprintf("	%s =w div %s, %s\n", stackValue, b, a))
-
-		case Dump:
-			a := stack[len(stack)-1]
-
-			asmBuf.WriteString(fmt.Sprintf("	call $printf(l $dump, ...,w %d , w %s)\n", i, a))
-
-		default:
-			panic(fmt.Sprintf("unknow instruction: %v", inst))
-		}
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	} else {
+		return 0
 	}
-
-	asmBuf.WriteString("	ret 0\n")
-	asmBuf.WriteString("}\n")
-	asmBuf.WriteString("data $dump = {b \"%d: Dump = %d\\n\", b 0 }\n")
-
-	asm := asmBuf.String()
-
-	err := os.WriteFile(path, []byte(asm), 0644)
-
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(asm)
 }

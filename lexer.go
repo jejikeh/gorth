@@ -66,8 +66,14 @@ func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
 			case w == "*":
 				instructions = append(instructions, mul())
 
+			case w == "==":
+				instructions = append(instructions, equal())
+
 			case w == "/":
 				instructions = append(instructions, div())
+
+			case w == "assert":
+				instructions = append(instructions, assert())
 
 			case w == "println":
 				instructions = append(instructions, dump())
@@ -86,7 +92,10 @@ func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
 	}
 
 	if l.fileContainError {
-		return instructions, fmt.Errorf("build failed because of errors")
+		// This way it is easier to see the errors, but i might just delete that when
+		// we have better way to panic?
+		fmt.Println()
+		return instructions, fmt.Errorf("too many errors")
 	}
 
 	return instructions, nil
@@ -95,7 +104,7 @@ func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
 func (l *Lexer) reportError(errorMessage string) {
 	l.fileContainError = true
 
-	fmt.Printf("%s:%d:%d: %s\n", l.filePath, l.currentLine, l.currentCollumn, errorMessage)
+	fmt.Printf("%s:%d:%d: %s\n", l.filePath, l.currentLine+1, l.currentCollumn+1, errorMessage)
 }
 
 func (l *Lexer) reportExpectedButGotError(expected, got string) {
