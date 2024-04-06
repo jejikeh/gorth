@@ -1,0 +1,7 @@
+this is simple example in gorth
+
+234 2 * 234 /
+println
+
+-2 +
+println

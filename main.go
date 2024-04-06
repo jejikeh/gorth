@@ -4,31 +4,33 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
 func main() {
-	program := []Instruction{
-		push(3),
-		push(6),
-		div(),
-		dump(),
-	}
+	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
+	buildPath := buildCmd.String("i", "", "path to project")
+	// outputPath := buildCmd.String("o", "", "output path")
 
-	// buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
-	// buildPath := buildCmd.String("path", "", "path to project")
-	// outputPath := buildCmd.String("output", "", "output path")
-
-	// runCmd := flag.NewFlagSet("run", flag.ExitOnError)
-	// runPath := runCmd.String("path", "", "path to project")
+	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
+	runPath := runCmd.String("i", "", "path to project")
 
 	flag.Parse()
 
 	switch os.Args[1] {
 	case "build":
+		buildCmd.Parse(os.Args[2:])
+
+		program := loadProgramFromFile(*buildPath)
+
 		buildProgram(program)
 
 	case "run":
+		runCmd.Parse(os.Args[2:])
+
+		program := loadProgramFromFile(*runPath)
+
 		runProgram(program)
 
 	default:
@@ -89,6 +91,58 @@ func dump() Instruction {
 	return Instruction{
 		Type: Dump,
 	}
+}
+
+func loadProgramFromFile(path string) []Instruction {
+	source, err := os.ReadFile(path)
+
+	if err != nil {
+		panic(err)
+	}
+
+	instructions := make([]Instruction, 0)
+
+	words := strings.Fields(string(source))
+
+	for _, w := range words {
+		if num, err := strconv.Atoi(w); err == nil {
+			instructions = append(instructions, push(num))
+
+			continue
+		}
+
+		if w == "+" {
+			instructions = append(instructions, plus())
+
+			continue
+		}
+
+		if w == "-" {
+			instructions = append(instructions, sub())
+
+			continue
+		}
+
+		if w == "*" {
+			instructions = append(instructions, mul())
+
+			continue
+		}
+
+		if w == "/" {
+			instructions = append(instructions, div())
+
+			continue
+		}
+
+		if w == "println" {
+			instructions = append(instructions, dump())
+
+			continue
+		}
+	}
+
+	return instructions
 }
 
 func runProgram(program []Instruction) {
