@@ -29,9 +29,9 @@ func NewLexer(path string) *Lexer {
 	}
 }
 
-func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
+func (l *Lexer) loadProgramFromFile() ([]*Instruction, error) {
 
-	instructions := make([]Instruction, 0)
+	instructions := make([]*Instruction, 0)
 
 	for lineIndex, line := range l.source {
 		l.currentLine = lineIndex
@@ -69,6 +69,12 @@ func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
 			case w == "==":
 				instructions = append(instructions, equal())
 
+			case w == "{":
+				instructions = append(instructions, leftBracket())
+
+			case w == "}":
+				instructions = append(instructions, rightBracket())
+
 			case w == "/":
 				instructions = append(instructions, div())
 
@@ -77,6 +83,9 @@ func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
 
 			case w == "println":
 				instructions = append(instructions, dump())
+
+			case w == "if":
+				instructions = append(instructions, iff())
 
 			case w == "//":
 				// @Incomplete: We do not handle code after comment on the same line. Sad?
@@ -91,6 +100,8 @@ func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
 		}
 	}
 
+	instructions = l.crossReference(instructions)
+
 	if l.fileContainError {
 		// This way it is easier to see the errors, but i might just delete that when
 		// we have better way to panic?
@@ -99,6 +110,50 @@ func (l *Lexer) loadProgramFromFile() ([]Instruction, error) {
 	}
 
 	return instructions, nil
+}
+
+func (l *Lexer) crossReference(instructions []*Instruction) []*Instruction {
+	stack := make([]int, 0)
+
+	for i := 0; i < len(instructions); i++ {
+		instruction := instructions[i]
+
+		switch instruction.Type {
+		case If:
+			if i == len(instructions)-1 {
+				l.reportExpectedButGotError("{", "EndOfFile")
+
+				break
+			}
+
+			if instructions[i+1].Type != LeftBracket {
+				// @Incomplete: Need to get the lexeme in here
+				l.reportExpectedButGotError("{", "NotImplemented")
+
+				break
+			}
+
+			stack = append(stack, i)
+
+		case RightBracket:
+			if len(stack) == 0 {
+				// @Cleanup: Better error
+				// @Incomplete: currentLine and currentCursor are incorrect here
+				l.reportExpectedButGotError("}", "No { condition on the stack")
+
+				break
+			}
+
+			ifInstruction := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+
+			instructions[ifInstruction].NumberValue = i
+		}
+	}
+
+	// @Incomplete: is better to check if some Instructions was not initialized?
+
+	return instructions
 }
 
 func (l *Lexer) reportError(errorMessage string) {

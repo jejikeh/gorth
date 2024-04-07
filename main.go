@@ -61,6 +61,12 @@ const (
 
 	Equal
 
+	LeftBracket
+	RightBracket
+
+	If
+	Else
+
 	Dump
 	Assert
 )
@@ -71,59 +77,79 @@ type Instruction struct {
 	Name        string
 }
 
-func push(x int) Instruction {
-	return Instruction{
+func push(x int) *Instruction {
+	return &Instruction{
 		Type:        Push,
 		NumberValue: x,
 	}
 }
 
-func plus() Instruction {
-	return Instruction{
+func plus() *Instruction {
+	return &Instruction{
 		Type: Plus,
 	}
 }
 
-func sub() Instruction {
-	return Instruction{
+func sub() *Instruction {
+	return &Instruction{
 		Type: Minus,
 	}
 }
 
-func mul() Instruction {
-	return Instruction{
+func mul() *Instruction {
+	return &Instruction{
 		Type: Multiply,
 	}
 }
 
-func div() Instruction {
-	return Instruction{
+func div() *Instruction {
+	return &Instruction{
 		Type: Divide,
 	}
 }
 
-func equal() Instruction {
-	return Instruction{
+func equal() *Instruction {
+	return &Instruction{
 		Type: Equal,
 	}
 }
 
-func dump() Instruction {
-	return Instruction{
+func dump() *Instruction {
+	return &Instruction{
 		Type: Dump,
 	}
 }
 
-func assert() Instruction {
-	return Instruction{
+func rightBracket() *Instruction {
+	return &Instruction{
+		Type: RightBracket,
+	}
+}
+
+func leftBracket() *Instruction {
+	return &Instruction{
+		Type: LeftBracket,
+	}
+}
+
+func iff() *Instruction {
+	return &Instruction{
+		Type: If,
+	}
+}
+
+func assert() *Instruction {
+	return &Instruction{
 		Type: Assert,
 	}
 }
 
-func runProgram(program []Instruction) {
+func runProgram(program []*Instruction) {
 	stack := make([]int, 0)
 
-	for i, inst := range program {
+	for i := 0; i < len(program); i++ {
+		inst := program[i]
+
 		switch inst.Type {
 		case Push:
 			stack = append(stack, inst.NumberValue)
@@ -182,6 +208,19 @@ func runProgram(program []Instruction) {
 			if expected != got {
 				panic(fmt.Sprintf("%d: Assert = [expected '%d' but got '%d']", i, expected, got))
 			}
+
+		case LeftBracket:
+
+		case RightBracket:
+
+		case If:
+			a := stack[len(stack)-1]
+
+			if a != 1 {
+				i = inst.NumberValue
+			}
+
+			stack = stack[:len(stack)-1]
 
 		default:
 			panic(fmt.Sprintf("unknow instruction: %v", inst))

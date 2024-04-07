@@ -1,7 +1,5 @@
 2 2 + 
 
-4 ==
-
-println
-
-// 0 assert
+4 == if { 
+	0 0 assert 
+}
