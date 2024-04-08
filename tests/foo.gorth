@@ -1,11 +1,11 @@
-100
+2331251
 
 2 2 +
 
-4 == if { 
-	1000 println
-} else {
-	2000 println
+4 == if {
+	123 123
 };
 
 println
+
+__stack_println__

@@ -7,41 +7,17 @@ import (
 )
 
 func main() {
-	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
-	buildPath := buildCmd.String("i", "", "path to project")
-	outputPath := buildCmd.String("o", "", "output path")
-
-	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
-	runPath := runCmd.String("i", "", "path to project")
+	buildCommand := NewBuildCommand()
+	runCommand := NewRunCommand()
 
 	flag.Parse()
 
 	switch os.Args[1] {
 	case "build":
-		buildCmd.Parse(os.Args[2:])
-
-		lexer := NewLexer(*buildPath)
-
-		program, err := lexer.loadProgramFromFile()
-
-		if err != nil {
-			panic(err)
-		}
-
-		genQBE(*outputPath, program)
+		buildCommand.Run()
 
 	case "run":
-		runCmd.Parse(os.Args[2:])
-
-		lexer := NewLexer(*runPath)
-
-		program, err := lexer.loadProgramFromFile()
-
-		if err != nil {
-			panic(err)
-		}
-
-		runProgram(program)
+		runCommand.Run()
 
 	default:
 		flag.Usage()
@@ -67,10 +43,11 @@ const (
 	If
 	Else
 
-	PopValue
+	PopValueFromCondition
 
 	Dump
 	Assert
+	StackPrintln
 )
 
 type Instruction struct {
@@ -148,13 +125,19 @@ func elsee() *Instruction {
 
 func popval() *Instruction {
 	return &Instruction{
-		Type: PopValue,
+		Type: PopValueFromCondition,
 	}
 }
 
 func assert() *Instruction {
 	return &Instruction{
 		Type: Assert,
+	}
+}
+
+func stackprintln() *Instruction {
+	return &Instruction{
+		Type: StackPrintln,
 	}
 }
 
@@ -232,6 +215,8 @@ func runProgram(program []*Instruction) {
 
 			if a != 1 {
 				i = inst.NumberValue
+			} else {
+				stack = stack[:len(stack)-1]
 			}
 
 		case Else:
@@ -239,10 +224,19 @@ func runProgram(program []*Instruction) {
 
 			if a != 0 {
 				i = inst.NumberValue
+			} else {
+				stack = stack[:len(stack)-1]
 			}
 
-		case PopValue:
+		case PopValueFromCondition:
 			stack = stack[:len(stack)-1]
+
+		case StackPrintln:
+			fmt.Println("\n__stack_println__")
+			fmt.Printf("%d: Stack = [%d]\n", i, len(stack))
+			for i, v := range stack {
+				fmt.Printf("%d: [%d]\n", i, v)
+			}
 
 		default:
 			panic(fmt.Sprintf("unknow instruction: %v", inst))
@@ -256,4 +250,62 @@ func boolToInt(b bool) int {
 	} else {
 		return 0
 	}
+}
+
+type BuildCommand struct {
+	buildCmd *flag.FlagSet
+	path     *string
+	output   *string
+}
+
+func NewBuildCommand() *BuildCommand {
+	buildCmd := flag.NewFlagSet("build", flag.ExitOnError)
+
+	return &BuildCommand{
+		buildCmd: buildCmd,
+		path:     buildCmd.String("i", "", "path to project"),
+		output:   buildCmd.String("o", "", "output path"),
+	}
+}
+
+func (c *BuildCommand) Run() {
+	c.buildCmd.Parse(os.Args[2:])
+
+	lexer := NewLexer(*c.path)
+
+	program, err := lexer.loadProgramFromFile()
+
+	if err != nil {
+		panic(err)
+	}
+
+	genQBE(*c.output, program)
+}
+
+type RunCommand struct {
+	runCmd *flag.FlagSet
+	path   *string
+}
+
+func NewRunCommand() *RunCommand {
+	runCmd := flag.NewFlagSet("run", flag.ExitOnError)
+
+	return &RunCommand{
+		runCmd: runCmd,
+		path:   runCmd.String("i", "", "path to project"),
+	}
+}
+
+func (c *RunCommand) Run() {
+	c.runCmd.Parse(os.Args[2:])
+
+	lexer := NewLexer(*c.path)
+
+	program, err := lexer.loadProgramFromFile()
+
+	if err != nil {
+		panic(err)
+	}
+
+	runProgram(program)
 }

@@ -107,6 +107,9 @@ func (l *Lexer) loadProgramFromFile() ([]*Instruction, error) {
 				// @Incomplete: We do not handle code after comment on the same line. Sad?
 				break lineParsing
 
+			case w == "__stack_println__":
+				instructions = append(instructions, stackprintln())
+
 			default:
 				// @Incomplete: If we got error on the line, should we skip this line to not
 				// print too many error?
@@ -153,7 +156,7 @@ func (l *Lexer) crossReference(instructions []*Instruction) []*Instruction {
 
 			stack = append(stack, i)
 
-		case RightBracket:
+		case RightBracket, PopValueFromCondition:
 			if len(stack) == 0 {
 				// @Cleanup: Better error
 				// @Incomplete: currentLine and currentCursor are incorrect here
@@ -165,7 +168,7 @@ func (l *Lexer) crossReference(instructions []*Instruction) []*Instruction {
 			ifInstruction := stack[len(stack)-1]
 			stack = stack[:len(stack)-1]
 
-			instructions[ifInstruction].NumberValue = i
+			instructions[ifInstruction].NumberValue = i - 1
 
 			// case PopValue:
 			// 	stack = stack[:len(stack)-1]
