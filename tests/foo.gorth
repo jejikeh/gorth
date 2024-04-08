@@ -1,5 +1,11 @@
-2 2 + 
+100
+
+2 2 +
 
 4 == if { 
-	0 0 assert 
-}
+	1000 println
+} else {
+	2000 println
+};
+
+println

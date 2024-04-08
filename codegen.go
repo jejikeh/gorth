@@ -94,7 +94,6 @@ func genQBE(path string, program []*Instruction) {
 	bufAsm.WriteString("	ret 0\n")
 	bufAsm.WriteString("}\n")
 	bufAsm.WriteString("data $dump = {b \"%d: Dump = [%d]\\n\", b 0 }\n")
-	bufAsm.WriteString("data $dump = {b \"%d: Dump = [%d]\\n\", b 0 }\n")
 
 	asm := bufAsm.String()
 

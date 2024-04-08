@@ -67,6 +67,8 @@ const (
 	If
 	Else
 
+	PopValue
+
 	Dump
 	Assert
 )
@@ -135,6 +137,18 @@ func leftBracket() *Instruction {
 func iff() *Instruction {
 	return &Instruction{
 		Type: If,
+	}
+}
+
+func elsee() *Instruction {
+	return &Instruction{
+		Type: Else,
+	}
+}
+
+func popval() *Instruction {
+	return &Instruction{
+		Type: PopValue,
 	}
 }
 
@@ -220,6 +234,14 @@ func runProgram(program []*Instruction) {
 				i = inst.NumberValue
 			}
 
+		case Else:
+			a := stack[len(stack)-1]
+
+			if a != 0 {
+				i = inst.NumberValue
+			}
+
+		case PopValue:
 			stack = stack[:len(stack)-1]
 
 		default:

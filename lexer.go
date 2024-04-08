@@ -23,9 +23,16 @@ func NewLexer(path string) *Lexer {
 		panic(err)
 	}
 
+	// @Cleanup: I think it is better to use maybe custon func in FiledsFunc
+	// c := strings.ReplaceAll(, ";", " ; ")
+	// c = strings.ReplaceAll(string(fileContent), "}", " } ")
+	// c = strings.ReplaceAll(string(fileContent), "{", " { ")
+
+	s := strings.Split(string(fileContent), "\n")
+
 	return &Lexer{
 		filePath: path,
-		source:   strings.Split(string(fileContent), "\n"),
+		source:   s,
 	}
 }
 
@@ -35,6 +42,9 @@ func (l *Lexer) loadProgramFromFile() ([]*Instruction, error) {
 
 	for lineIndex, line := range l.source {
 		l.currentLine = lineIndex
+
+		// @Incomplete: The source location of words are lost because of Fields.
+		// We are reporting not the collumn, but rather world index
 
 		// @Note: If you decide what you need to look ahead some tokens
 		// Make sure what you realy need it, because it is just a lexer.
@@ -87,6 +97,12 @@ func (l *Lexer) loadProgramFromFile() ([]*Instruction, error) {
 			case w == "if":
 				instructions = append(instructions, iff())
 
+			case w == "else":
+				instructions = append(instructions, elsee())
+
+			case w == "};", w == "{};":
+				instructions = append(instructions, popval())
+
 			case w == "//":
 				// @Incomplete: We do not handle code after comment on the same line. Sad?
 				break lineParsing
@@ -112,6 +128,8 @@ func (l *Lexer) loadProgramFromFile() ([]*Instruction, error) {
 	return instructions, nil
 }
 
+// @Cleanup: This doesnt seams to fit right in lexer part.
+// Maybe look some jblow videos to figouraut some things?
 func (l *Lexer) crossReference(instructions []*Instruction) []*Instruction {
 	stack := make([]int, 0)
 
@@ -119,7 +137,7 @@ func (l *Lexer) crossReference(instructions []*Instruction) []*Instruction {
 		instruction := instructions[i]
 
 		switch instruction.Type {
-		case If:
+		case If, Else:
 			if i == len(instructions)-1 {
 				l.reportExpectedButGotError("{", "EndOfFile")
 
@@ -127,7 +145,7 @@ func (l *Lexer) crossReference(instructions []*Instruction) []*Instruction {
 			}
 
 			if instructions[i+1].Type != LeftBracket {
-				// @Incomplete: Need to get the lexeme in here
+				// @Incomplete: Need to get the lexeme in here for error reporting
 				l.reportExpectedButGotError("{", "NotImplemented")
 
 				break
@@ -148,7 +166,11 @@ func (l *Lexer) crossReference(instructions []*Instruction) []*Instruction {
 			stack = stack[:len(stack)-1]
 
 			instructions[ifInstruction].NumberValue = i
+
+			// case PopValue:
+			// 	stack = stack[:len(stack)-1]
 		}
+
 	}
 
 	// @Incomplete: is better to check if some Instructions was not initialized?
